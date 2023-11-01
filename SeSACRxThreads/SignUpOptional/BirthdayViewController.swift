@@ -7,6 +7,8 @@
  
 import UIKit
 import SnapKit
+import RxSwift
+import RxCocoa
 
 class BirthdayViewController: UIViewController {
     
@@ -66,6 +68,14 @@ class BirthdayViewController: UIViewController {
   
     let nextButton = PointButton(title: "가입하기")
     
+    let buttonEnabled = BehaviorSubject(value: false)
+    
+    let birthday: BehaviorSubject<Date> = BehaviorSubject(value: .now)
+    let year = BehaviorSubject(value: 1999)
+    let month = BehaviorSubject(value: 12)
+    let day = BehaviorSubject(value: 20)
+    let disposeBag = DisposeBag()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -74,6 +84,73 @@ class BirthdayViewController: UIViewController {
         configureLayout()
         
         nextButton.addTarget(self, action: #selector(nextButtonClicked), for: .touchUpInside)
+        
+        bind()
+    }
+    
+    func bind() {
+        
+        buttonEnabled
+            .bind(to: nextButton.rx.isEnabled, infoLabel.rx.isHidden)
+            .disposed(by: disposeBag)
+        
+        year
+            .map { "\($0)년" }
+            .bind(to: yearLabel.rx.text)
+            .disposed(by: disposeBag)
+        month
+            .map { "\($0)월"}
+            .observe(on: MainScheduler.instance) //
+            .subscribe(with: self) { owner, value in
+                owner.monthLabel.text = value
+            }
+            .disposed(by: disposeBag)
+        day
+            .map { "\($0)일" }
+            .observe(on: MainScheduler.instance)
+            .subscribe(with: self) { owner, value in
+                owner.dayLabel.text = value
+            }
+            .disposed(by: disposeBag)
+        
+        birthDayPicker
+            .rx
+            .date
+            .subscribe(with: self) { owner, value in
+                owner.birthday.onNext(value)
+            }
+            .disposed(by: disposeBag)
+        
+        birthday
+            .subscribe(with: self) { owner, date in
+                let component = Calendar.current.dateComponents([.year, .month, .day], from: date)
+                
+                owner.year.onNext(component.year!)
+                owner.month.onNext(component.month!)
+                owner.day.onNext(component.day!)
+            }
+            .disposed(by: disposeBag)
+        
+        birthday
+            .subscribe(with: self) { owner, date in
+                let component = Calendar.current.dateComponents([.year, .month, .day], from: date)
+                let now = Calendar.current.dateComponents([.year, .month, .day], from: .now)
+                // 만 24세 이상
+                var passSeventeen = false
+                
+                if now.year! - component.year! < 24 {
+                    passSeventeen = false
+                } else if now.year! - component.year! == 24 {
+                    if now.month! > component.month! {
+                        passSeventeen = true
+                    }
+                } else {
+                    passSeventeen = true
+                }
+                
+                owner.buttonEnabled.onNext(passSeventeen)
+            }
+            .disposed(by: disposeBag)
     }
     
     @objc func nextButtonClicked() {
