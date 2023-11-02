@@ -68,12 +68,7 @@ class BirthdayViewController: UIViewController {
   
     let nextButton = PointButton(title: "가입하기")
     
-    let buttonEnabled = BehaviorSubject(value: false)
-    
-    let birthday: BehaviorSubject<Date> = BehaviorSubject(value: .now)
-    let year = BehaviorSubject(value: 1999)
-    let month = BehaviorSubject(value: 12)
-    let day = BehaviorSubject(value: 20)
+    let viewModel = BirthdayViewModel()
     let disposeBag = DisposeBag()
     
     override func viewDidLoad() {
@@ -90,22 +85,22 @@ class BirthdayViewController: UIViewController {
     
     func bind() {
         
-        buttonEnabled
+        viewModel.buttonEnabled
             .bind(to: nextButton.rx.isEnabled, infoLabel.rx.isHidden)
             .disposed(by: disposeBag)
         
-        year
+        viewModel.year
             .map { "\($0)년" }
             .bind(to: yearLabel.rx.text)
             .disposed(by: disposeBag)
-        month
+        viewModel.month
             .map { "\($0)월"}
-            .observe(on: MainScheduler.instance) //
+            .observe(on: MainScheduler.instance)
             .subscribe(with: self) { owner, value in
                 owner.monthLabel.text = value
             }
             .disposed(by: disposeBag)
-        day
+        viewModel.day
             .map { "\($0)일" }
             .observe(on: MainScheduler.instance)
             .subscribe(with: self) { owner, value in
@@ -117,38 +112,7 @@ class BirthdayViewController: UIViewController {
             .rx
             .date
             .subscribe(with: self) { owner, value in
-                owner.birthday.onNext(value)
-            }
-            .disposed(by: disposeBag)
-        
-        birthday
-            .subscribe(with: self) { owner, date in
-                let component = Calendar.current.dateComponents([.year, .month, .day], from: date)
-                
-                owner.year.onNext(component.year!)
-                owner.month.onNext(component.month!)
-                owner.day.onNext(component.day!)
-            }
-            .disposed(by: disposeBag)
-        
-        birthday
-            .subscribe(with: self) { owner, date in
-                let component = Calendar.current.dateComponents([.year, .month, .day], from: date)
-                let now = Calendar.current.dateComponents([.year, .month, .day], from: .now)
-                // 만 24세 이상
-                var passSeventeen = false
-                
-                if now.year! - component.year! < 24 {
-                    passSeventeen = false
-                } else if now.year! - component.year! == 24 {
-                    if now.month! > component.month! {
-                        passSeventeen = true
-                    }
-                } else {
-                    passSeventeen = true
-                }
-                
-                owner.buttonEnabled.onNext(passSeventeen)
+                owner.viewModel.birthday.onNext(value)
             }
             .disposed(by: disposeBag)
     }
