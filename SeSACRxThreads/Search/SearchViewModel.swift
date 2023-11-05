@@ -14,6 +14,4 @@ class SearchViewModel {
     
     lazy var items = BehaviorSubject(value: data)
     
-    let disposeBag = DisposeBag()
-    
 }
